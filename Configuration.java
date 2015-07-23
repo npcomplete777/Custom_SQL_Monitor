@@ -1,48 +1,37 @@
 package com.singularity.ee.agent.systemagent.monitors;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
-public class Command 
-{
+/**
+ * An object holder for the configuration file
+ */
+public class Configuration {
 
-    private String command;
-    private String displayPrefix; 
-    
-    private String timeStampCommand;
-    private String filePath;
+    String metricPrefix;
+    List<Server> servers;
+    List<Command> commands;
 
-    public String getDisplayPrefix() {return displayPrefix;}
-
-    public void setDisplayPrefix(String displayPrefix) {this.displayPrefix = displayPrefix;}
-
-    public String getCommand() {
-        return command;
+    public List<Server> getServers() {
+        return servers;
     }
 
-    public void setCommand(String command) 
-    {
-        this.command = command;
-    }
-    
-    public String getTimeStampCommand()
-    {
-    	return timeStampCommand;
-    }
-    
-    public void setTimeStampCommand(String timeStampCommand)
-    {
-    	this.timeStampCommand = timeStampCommand;
-    }
-    
-    public String getFilePath()
-    {
-    	return filePath;
-    }
-    
-    public void setFilePath(String filePath)
-    {
-    	this.filePath = filePath;
+    public void setServers(List<Server> servers) {
+        this.servers = servers;
     }
 
+    public String getMetricPrefix() {
+        return metricPrefix;
+    }
+
+    public void setMetricPrefix(String metricPrefix) {
+        this.metricPrefix = metricPrefix;
+    }
+
+    public List<Command> getCommands() {
+        return commands;
+    }
+
+    public void setCommands(List<Command> commands) {
+        this.commands = commands;
+    }
 }
