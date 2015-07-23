@@ -1,0 +1,17 @@
+servers:
+    - server: "localhost"
+      driver: "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+      connectionString: "jdbc:sqlserver://localhost;instanceName=SQLEXPRESS;DatabaseName=PAMS2_Accp;integratedSecurity=true"
+      user: "aaron-PC\aaron"
+      password: "dummy"
+
+commands:
+- command: "SELECT pams2.xom_vw_cnfg_report_tables.MEASVALUECHAR,1 FROM pams2.xom_vw_cnfg_report_requests JOIN pams2.xom_vw_cnfg_report_tables ON (pams2.xom_vw_cnfg_report_requests.REQID = pams2.xom_vw_cnfg_report_tables.REQID) WHERE REQCOMPDT IS null and reqcompflag IN ('T', 'B') and pams2.xom_vw_cnfg_report_requests.REQDATE > DATEADD(hh, -10000, GETDATE());"
+  displayPrefix: "EDMS req 1"
+- command: "SELECT pams2.xom_vw_cnfg_report_requests.MONAME, pams2.xom_vw_cnfg_report_requests.PROCESSMIN FROM pams2.xom_vw_cnfg_report_requests;"
+  displayPrefix: "EDMS req 2"
+- command: "SELECT pams2.xom_vw_cnfg_report_tables.MEASVALUECHAR,1 FROM pams2.xom_vw_cnfg_report_requests JOIN pams2.xom_vw_cnfg_report_tables ON (pams2.xom_vw_cnfg_report_requests.REQID = pams2.xom_vw_cnfg_report_tables.REQID) WHERE DELAYMIN > 1000 and pams2.xom_vw_cnfg_report_requests.reqid NOT IN (SELECT pams2.xom_vw_cnfg_report_requests.REQID FROM pams2.xom_vw_cnfg_report_requests JOIN pams2.xom_vw_cnfg_report_tables ON (pams2.xom_vw_cnfg_report_requests.REQID = pams2.xom_vw_cnfg_report_tables.REQID) WHERE REQCOMPDT IS null and reqcompflag IN ('T', 'B') and pams2.xom_vw_cnfg_report_requests.REQDATE > DATEADD(hh, -freqInSec, GETDATE()));"
+  displayPrefix: "EDMS req 3"
+
+# Make sure the metric prefix ends with a |
+metricPrefix: "Custom Metrics|PAMS|"
