@@ -1,0 +1,25 @@
+lib folder should reside in <SQL_MONITOR_HOME>/lib
+
+these .jar files will be pointed to in the classpath tag in monitor.xml
+
+<classpath>
+       lib/joda-time-2.0.jar;lib/sqljdbc4.jar;lib/sqljdbc41.jar;lib/mysql-connector-java-2.0.14-bin.jar;lib/postgresql-9.4-1201.jdbc41.jar;ArbitrarySqlMonitor.jar;lib/commons-lang-2.4.jar;lib/commons-logging-1.1.1.jar;lib/machineagent.jar;lib/snakeyaml-1.13.jar;lib/appd-exts-commons-1.1.5.jar;lib/slf4j-api-1.7.12.jar;lib/slf4j-simple-1.7.12.jar;lib/guava.jar
+</classpath>
+
+list of required .jar files to but in lib folder:
+
+Mode                LastWriteTime     Length Name                                                                      
+----                -------------     ------ ----                                                                      
+-a---         3/24/2015   8:53 PM      95978 appd-exts-commons-1.1.5.jar                                               
+-a---          6/4/2015   4:15 PM     261809 commons-lang-2.4.jar                                                      
+-a---          6/4/2015   4:16 PM      60841 commons-logging-1.1.1.jar                                                 
+-a---         3/24/2015   5:26 PM    1501575 guava.jar                                                                 
+-a---         3/24/2013   8:14 PM     569231 joda-time-2.0.jar                                                         
+-a---         6/11/2015  11:40 AM     125961 mysql-connector-java-2.0.14-bin.jar                                       
+-a---          6/4/2015   4:17 PM    2714016 ojdbc6.jar                                                                
+-a---          4/8/2015   2:56 PM     648487 postgresql-9.4-1201.jdbc41.jar                                            
+-a---         3/26/2015   9:55 PM      32127 slf4j-api-1.7.12.jar                                                      
+-a---         3/26/2015   9:55 PM      10712 slf4j-simple-1.7.12.jar                                                   
+-a---        10/27/2013   5:12 PM     273449 snakeyaml-1.13.jar                                                        
+-a---          6/4/2015   4:17 PM     584207 sqljdbc4.jar                                                              
+-a---         12/9/2014   1:17 PM     586192 sqljdbc41.jar                                                             
