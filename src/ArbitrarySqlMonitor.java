@@ -379,7 +379,6 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
             } 
             catch (SQLException e) 
             {}
-//HERE
             if (stmt != null) 
             {
             	try 
@@ -452,22 +451,6 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
     private void setLogPrefix(String logPrefix) 
     {
         this.logPrefix = (logPrefix != null) ? logPrefix : "";
-    }
-
-    protected String getMetricPrefix()
-    {
-        if (metricPath != null)
-        {
-            if (!metricPath.endsWith("|"))
-            {
-                metricPath += "|";
-            }
-            return metricPath;
-        }
-        else
-        {
-            return "Custom Metrics|SQLMonitor|";
-        }
     }
 
     //below main method is for testing locally in Eclipse.
