@@ -24,7 +24,7 @@ import java.io.IOException;
 
 public class ArbitrarySqlMonitor extends AManagedMonitor
 {
-	public String metricPrefix;
+    public String metricPrefix;
     public static final String CONFIG_ARG = "config-file";
     public static final String LOG_PREFIX = "log-prefix";
     private static String logPrefix;
@@ -35,10 +35,10 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
     boolean hasDateStamp = false;
     BufferedReader br = null;
     private String relativePath = null;
-	private String timeper_in_sec = null;
-	private String execution_freq_in_secs = null;
-	float diffInMillis = -1.0F;
-	Float DiffInSec = null;
+    private String timeper_in_sec = null;
+    private String execution_freq_in_secs = null;
+    float diffInMillis = -1.0F;
+    Float DiffInSec = null;
     boolean metricOverlap = false;
 
     private String cleanFieldName(String name)
@@ -65,60 +65,57 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
     	
     	//relativePath for reading/writing time stamp that tracks last execution of queries
     	relativePath = taskArguments.get("machineAgent-relativePath");
-		relativePath += "timeStamp.txt";
-		
-		File file = new File(relativePath);
+	relativePath += "timeStamp.txt";
+	File file = new File(relativePath);
     	FileWriter fw;
     	logger.info("path: " + relativePath);
-    	
     	timeper_in_sec = taskArguments.get("timeper_in_sec");
-		execution_freq_in_secs = taskArguments.get("execution_freq_in_secs");
-		timeper_in_secConv = Long.valueOf(timeper_in_sec).longValue();
-		execution_freq_in_secsConv = Long.valueOf(execution_freq_in_secs).longValue();
-		logger.info("timePeriod_in_sec: " + timeper_in_sec);
-		
-		DateTime currentTime = new DateTime(new DateTime());
-		DateTime timeLastExecuted = new DateTime(new DateTime());
+	execution_freq_in_secs = taskArguments.get("execution_freq_in_secs");
+	timeper_in_secConv = Long.valueOf(timeper_in_sec).longValue();
+	execution_freq_in_secsConv = Long.valueOf(execution_freq_in_secs).longValue();
+	logger.info("timePeriod_in_sec: " + timeper_in_sec);
+	DateTime currentTime = new DateTime(new DateTime());
+	DateTime timeLastExecuted = new DateTime(new DateTime());
 		
         if (taskArguments != null) 
         {
-        	try 
-        	{	 	
-    			String sCurrentLine;     
-    			br = new BufferedReader(new FileReader(relativePath));
+            try 
+            {	 	
+    		String sCurrentLine;     
+    	        br = new BufferedReader(new FileReader(relativePath));
     			
-    			//execution frequency should always greater than time period passed into queries to prevent duplicate data
-    			if(execution_freq_in_secsConv < timeper_in_secConv)
-    			{
-    				logger.error("CANNOT set execution_freq_in_secs in monitor.xml to a lesser value than timeper_in_sec");
-    				logger.error("execution_freq_in_secs: " + execution_freq_in_secs);
-    				logger.error("timeper_in_sec: " + timeper_in_sec);
-    			}
-    							
-    			if(br != null)
-    			{ 			 
-    				while ((sCurrentLine = br.readLine()) != null) 
-    				{  		
-    					dateStampFromFile = sCurrentLine; 					
-    					timeLastExecuted = DateTime.parse(dateStampFromFile);
-    				}   			
-    			} 		
-    		} 
-        	catch (IOException e) 
+    		//execution frequency should always greater than time period passed into queries to prevent duplicate data
+    		if(execution_freq_in_secsConv < timeper_in_secConv)
     		{
-    			e.printStackTrace(); 
-    		} 
-        	finally 
-    		{
-    			try 
-    			{
-    				if (br != null)br.close();
-    			} 
-    			catch (IOException ex) 
-    			{
-    				ex.printStackTrace();
-    			}
+    		    logger.error("CANNOT set execution_freq_in_secs in monitor.xml to a lesser value than timeper_in_sec");
+    		    logger.error("execution_freq_in_secs: " + execution_freq_in_secs);
+    		    logger.error("timeper_in_sec: " + timeper_in_sec);
     		}
+    							
+    		if(br != null)
+    		{ 			 
+    		    while ((sCurrentLine = br.readLine()) != null) 
+    		    {  		
+    		        dateStampFromFile = sCurrentLine; 					
+    			timeLastExecuted = DateTime.parse(dateStampFromFile);
+    		    }   			
+    		} 		
+    	    } 
+            catch (IOException e) 
+    	    {
+    		e.printStackTrace(); 
+    	    } 
+            finally 
+    	    {
+    		try 
+    		{
+    		    if (br != null)br.close();
+    		} 
+    		catch (IOException ex) 
+    		{
+    		    ex.printStackTrace();
+    		}
+    	    }
         	
             setLogPrefix(taskArguments.get(LOG_PREFIX));
             logger.info(getLogPrefix() + "Starting the SQL Monitoring task.");
@@ -133,7 +130,7 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
             try 
             {
             	fw = new FileWriter(file.getAbsoluteFile());
-        		BufferedWriter bw = new BufferedWriter(fw);       		       		
+        	BufferedWriter bw = new BufferedWriter(fw);       		       		
                 Configuration config = YmlReader.readFromFile(configFilename, Configuration.class);
 
                 if (config.getCommands().isEmpty()) 
@@ -143,37 +140,35 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
                
                 logger.info("instant time (current time): " + currentTime);
                 logger.info("old time (Time last executed query): " + timeLastExecuted);
-                
                 diffInMillis = Math.abs(timeLastExecuted.getMillis() - currentTime.getMillis());
             	float diffInSec = diffInMillis / 1000;
                 float diffInMin = diffInSec / 60;
                 
                 if(timeper_in_secConv > diffInSec)
                 {
-                	logger.info("execution frequency > time between query execution; no duplicate data.  Time in Minutes since last execution of queries: " + diffInMin );         	                	
+                    logger.info("execution frequency > time between query execution; no duplicate data.  Time in Minutes since last execution of queries: " + diffInMin );         	                	
                     logger.info("execution frequency in seconds: " + timeper_in_secConv);
                     logger.info("Time in sec: " + diffInSec);                  
-                	               	
-                	timeLastExecuted = new DateTime();              
-                	bw.write(timeLastExecuted.toString());
-                	bw.close();
-                	logger.info("date written to file: " + timeLastExecuted.toString());     	
-                	metricOverlap = false;
-                	status = executeCommands(config, status);                	                	
+                    timeLastExecuted = new DateTime();              
+                    bw.write(timeLastExecuted.toString());
+                    bw.close();
+                    logger.info("date written to file: " + timeLastExecuted.toString());     	
+                    metricOverlap = false;
+                    status = executeCommands(config, status);                	                	
                 }              
                 else if(timeper_in_secConv <= diffInSec)
                 {
-                	logger.info("execution frequency < diffInSec");    	               	                             
+                    logger.info("execution frequency < diffInSec");    	               	                             
                     logger.info("Time in sec: " + diffInSec);                                       
                     timeLastExecuted = new DateTime();
-                	bw.write(timeLastExecuted.toString());
-                	bw.close();
+                    bw.write(timeLastExecuted.toString());
+                    bw.close();
                 	
-                	//store this in instance variable, then pass value into queries
-                	DiffInSec = diffInSec;         	
-                	logger.info("execution frequency < diffInMin; DiffInSec variable value: " + DiffInSec);
-                	metricOverlap = true;
-                	status = executeCommands(config, status);                	
+                    //store this in instance variable, then pass value into queries
+                    DiffInSec = diffInSec;         	
+                    logger.info("execution frequency < diffInMin; DiffInSec variable value: " + DiffInSec);
+                    metricOverlap = true;
+                    status = executeCommands(config, status);                	
                 }                                              
             }
             catch (Exception ioe) 
@@ -206,9 +201,9 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
                                 
                         if(displayPrefix == null)
                         {
-                        	logger.info("no displayPrefix set...");
-                        	command.setDisplayPrefix("Custom Metrics|default|");
-                        	logger.info("..." + command.getDisplayPrefix());
+                            logger.info("no displayPrefix set...");
+                            command.setDisplayPrefix("Custom Metrics|default|");
+                            logger.info("..." + command.getDisplayPrefix());
                         }
                         
                         if (statement != null) 
@@ -272,9 +267,8 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
         
         try 
         {
-        	logger.info("dateStamp: " + dateStampFromFile);
-        	
-        	long rowcount = 0;
+            logger.info("dateStamp: " + dateStampFromFile);
+            long rowcount = 0;
             stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
             
             if(query.contains("freqInSec"))
@@ -283,16 +277,16 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
             	
             	if(metricOverlap == false)
             	{
-            		newQuery = query.replace("freqInSec", timeper_in_sec);
-                	rs = stmt.executeQuery(newQuery);              	
-                	logger.info("skippedMetricWrite == false... query with timeDate replaced: " + newQuery);
+            	    newQuery = query.replace("freqInSec", timeper_in_sec);
+                    rs = stmt.executeQuery(newQuery);              	
+                    logger.info("skippedMetricWrite == false... query with timeDate replaced: " + newQuery);
             	}
             	else if(metricOverlap == true)
             	{
-            		String DiffInSecString = DiffInSec.toString();
-            		newQuery = query.replace("freqInSec", DiffInSecString);
-                	rs = stmt.executeQuery(newQuery);
-                	logger.info("query with timeDate replaced: " + newQuery);
+            	    String DiffInSecString = DiffInSec.toString();
+            	    newQuery = query.replace("freqInSec", DiffInSecString);
+                    rs = stmt.executeQuery(newQuery);
+                    logger.info("query with timeDate replaced: " + newQuery);
             	}           	
             }
             else
@@ -322,10 +316,10 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
             {           	           	
             	if(rs.next())
             	{
-            		String key = cleanFieldName(rs.getString(1));
-            		logger.info("display prefix: " + displayPrefix);
-            		logger.info("query result set has single row and column");
-            		String metricName = cleanFieldName(rs.getMetaData().getColumnName(1));              	              	
+            	    String key = cleanFieldName(rs.getString(1));
+            	    logger.info("display prefix: " + displayPrefix);
+            	    logger.info("query result set has single row and column");
+            	    String metricName = cleanFieldName(rs.getMetaData().getColumnName(1));              	              	
                     String value = rs.getString(1);
                     ResultSetMetaData metaData = rs.getMetaData();
                     String name = metaData.getColumnLabel(1);
@@ -346,31 +340,30 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
             // multi row columns returned, execute else statement below
             else
             {           	
-	            while(rs.next())
-	            {
-	            	String key = cleanFieldName(rs.getString(1));
-	            	
-	            	for (int i = 2; i <= rs.getMetaData().getColumnCount(); i++)
-	            	{      	            			            
-	            		logger.info("display prefix: " + displayPrefix);
-	            		logger.info("query result set has multiple rows and columns");
-	            		String metricName = cleanFieldName(rs.getMetaData().getColumnName(i));	            		
-	            		retval.setName(metricName);
-	            		retval.setValue(rs.getString(i));        	
+	        while(rs.next())
+	        {
+	            String key = cleanFieldName(rs.getString(1));
+	                	
+	            for (int i = 2; i <= rs.getMetaData().getColumnCount(); i++)
+	            {      	            			            
+	                logger.info("display prefix: " + displayPrefix);
+	                logger.info("query result set has multiple rows and columns");
+	            	String metricName = cleanFieldName(rs.getMetaData().getColumnName(i));	            		
+	            	retval.setName(metricName);
+	            	retval.setValue(rs.getString(i));        	
 	            		
-	            		if(retval.getValue() != null)
-	                    {            			
-	            			printMetricArb(displayPrefix + "|" + key + "|" + metricName, rs.getString(1),
-	            					MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION,
-	            					MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT,
-	            					MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE);
-	            			
-	            			logger.info("metric path: " + displayPrefix + "|" + key + "|" + metricName); 
-	            			logger.info("metric value: "  + " : " + rs.getString(i));
-	                    }  		
-	            	}
-	            	rowcount += 1;   	
-	            }          
+	            	if(retval.getValue() != null)
+	                {            			
+	                    printMetricArb(displayPrefix + "|" + key + "|" + metricName, rs.getString(1),
+	            	        MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION,
+	            		MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT,
+	            	        MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE);
+	            		logger.info("metric path: " + displayPrefix + "|" + key + "|" + metricName); 
+	            		logger.info("metric value: "  + " : " + rs.getString(i));
+	                }  		
+	            }
+	            rowcount += 1;   	
+	        }          
             }         
         } 
         catch (SQLException sqle) 
@@ -386,12 +379,15 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
             } 
             catch (SQLException e) 
             {}
+//HERE
             if (stmt != null) 
+            {
             	try 
             	{
-            		stmt.close();
+            	    stmt.close();
             	} 
             	catch (SQLException e) {}
+            }
         }
         return retval;
     }
