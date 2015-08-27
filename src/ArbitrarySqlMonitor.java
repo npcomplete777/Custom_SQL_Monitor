@@ -256,6 +256,7 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
         return status;
     }
 
+    
     private Data executeQuery(Connection conn, String query, String displayPrefix) 
     {
         Data retval = new Data();
@@ -324,24 +325,91 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
                     ResultSetMetaData metaData = rs.getMetaData();
                     String name = metaData.getColumnLabel(1);
                     retval.setName(name);
-                    retval.setValue(value);            
+                    retval.setValue(value); 
+                    
+                    String nameHolder = retval.getName();
+                    String valHolder = retval.getValue();               
+                    Data data = new Data(nameHolder, valHolder);                   	                
+                    String metricPath = displayPrefix + "|" + key + "|" + metricName;
                     
                     if(retval.getValue() != null)
                     {                    	
-                    	printMetricArb(displayPrefix + "|" + key + "|" + metricName, rs.getString(1),
+                    	//original, working as designed
+                    	/*printMetricArb(key + "|" + metricName, rs.getString(1),
                                 MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION,
                                 MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT,
-                                MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE);
-                    	logger.info("metric path: " + displayPrefix + "|" + key + "|" + metricName);
+                                MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE);*/
+                    	
+                    	/*String aggregationType1 = MetricWriter.METRIC_AGGREGATION_TYPE_AVERAGE;
+                        String timeRollup1 = MetricWriter.METRIC_TIME_ROLLUP_TYPE_AVERAGE;
+                        String clusterRollup1 = MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_INDIVIDUAL;*/
+                        
+                        String aggregationType = MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION;
+                        String timeRollup = MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT;
+                        String clusterRollup = MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE;
+                    	
+                    	MetricWriter writer = getMetricWriter(metricPath, aggregationType, timeRollup, clusterRollup);
+                    	
+                    	writer.printMetric(data.getValue());
+                    
+                    	logger.info("metric path: " + metricPath);
                     	logger.info("metric value: "  + " : " + rs.getString(1));
                     }                
             	}
             }
             // multi row columns returned, execute else statement below
             else
-            {           	
+            {           
+          
 	        while(rs.next())
 	        {
+	        	
+	        	logger.info("while loop hit for multi row column..." + rowcount);
+	            String key = cleanFieldName(rs.getString(1));
+	                	
+	            for (int i = 2; i <= rs.getMetaData().getColumnCount(); i++)
+	            {      	            			            
+	                logger.info("display prefix: " + displayPrefix);
+	                logger.info("query result set has multiple rows and columns");
+	            	String metricName = cleanFieldName(rs.getMetaData().getColumnName(i));	            		
+	            	retval.setName(metricName);
+	            	retval.setValue(rs.getString(i));       
+	            	
+	            	String nameHolder = retval.getName();
+                    String valHolder = retval.getValue();               
+                    Data data = new Data(nameHolder, valHolder);                   	                
+                    //String metricPath = key + "|" + metricName;
+                    String metricPath = displayPrefix + "|" + key + "|" + metricName;
+	            		
+	            	if(retval.getValue() != null)
+	                {            			
+	                    /*printMetricArb(key + "|" + metricName, rs.getString(1),
+	            	        MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION,
+	            		MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT,
+	            	        MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE);*/
+	                    
+	                    String aggregationType = MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION;
+                        String timeRollup = MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT;
+                        String clusterRollup = MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE;
+                    	
+                    	MetricWriter writer = getMetricWriter(metricPath, aggregationType, timeRollup, clusterRollup);
+                    	
+                    	writer.printMetric(data.getValue());
+	                    
+	                    
+	            		logger.info("metric path: " + metricPath); 
+	            		logger.info("metric value: "  + " : " + rs.getString(i));
+	                }  		
+	            }
+	            rowcount += 1;   	
+	        }      
+	        
+	        
+	        /*
+	        while(rs.next())
+	        {
+	        	
+	        	logger.info("while loop hit for multi row column..." + rowcount);
 	            String key = cleanFieldName(rs.getString(1));
 	                	
 	            for (int i = 2; i <= rs.getMetaData().getColumnCount(); i++)
@@ -352,18 +420,22 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
 	            	retval.setName(metricName);
 	            	retval.setValue(rs.getString(i));        	
 	            		
-	            	if(retval.getValue() != null)
-	                {            			
+	            	//if(retval.getValue() != null)
+	                //{            			
 	                    printMetricArb(displayPrefix + "|" + key + "|" + metricName, rs.getString(1),
 	            	        MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION,
 	            		MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT,
 	            	        MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE);
 	            		logger.info("metric path: " + displayPrefix + "|" + key + "|" + metricName); 
 	            		logger.info("metric value: "  + " : " + rs.getString(i));
-	                }  		
+	                //}  		
 	            }
 	            rowcount += 1;   	
-	        }          
+	        }        
+	        */
+	        
+	        
+	        
             }         
         } 
         catch (SQLException sqle) 
@@ -379,6 +451,7 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
             } 
             catch (SQLException e) 
             {}
+//HERE
             if (stmt != null) 
             {
             	try 
@@ -409,6 +482,9 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
         return conn;
     }
     
+    
+    
+    
     protected void printMetricArb(String name, String value, String aggType, String timeRollup, String clusterRollup)
     {
     	String metricName = name;
@@ -421,6 +497,38 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
                     + clusterRollup);
         }
     }
+    
+  //Todd's origninal below:
+    protected void printMetric(String name, String value, String aggType, String timeRollup, String clusterRollup)
+    {
+        String metricName = getMetricPrefix() + name;
+        MetricWriter metricWriter = getMetricWriter(metricName, aggType, timeRollup, clusterRollup);
+        metricWriter.printMetric(value);
+
+        // just for debug output
+        if (logger.isDebugEnabled())
+        {
+            logger.debug("METRIC:  NAME:" + metricName + " VALUE:" + value + " :" + aggType + ":" + timeRollup + ":"
+                    + clusterRollup);
+        }
+    }
+    
+    protected String getMetricPrefix()
+    {
+        if (metricPath != null)
+        {
+            if (!metricPath.endsWith("|"))
+            {
+                metricPath += "|";
+            }
+            return metricPath;
+        }
+        else
+        {
+            return "Custom Metrics|SQLMonitor|";
+        }
+    }
+
 
     private String getConfigFilename(String filename) 
     {
@@ -458,9 +566,9 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
     public static void main(String[] argv) throws Exception
     {
     	Map<String, String> taskArguments = new HashMap<String, String>();
-    	taskArguments.put("config-file", "c:\\MA5\\MachineAgent\\monitors\\ArbitrarySQLMonitor\\config.yml");
+    	taskArguments.put("config-file", "c:\\MA5\\MachineAgent41\\monitors\\ArbitrarySQLMonitor\\config.yml");
     	taskArguments.put("log-prefix", "[SQLMonitorAppDExt]");
-    	taskArguments.put("machineAgent-relativePath", "c:\\MA5\\MachineAgent\\monitors\\ArbitrarySQLMonitor\\");  	
+    	taskArguments.put("machineAgent-relativePath", "c:\\MA5\\MachineAgent41\\monitors\\ArbitrarySQLMonitor\\");  	
     	taskArguments.put("timeper_in_sec", "29");
     	taskArguments.put("execution_freq_in_secs", "30");   	
         new ArbitrarySqlMonitor().execute(taskArguments, null);
