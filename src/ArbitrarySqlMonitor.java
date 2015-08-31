@@ -8,12 +8,16 @@ import com.singularity.ee.agent.systemagent.api.MetricWriter;
 import com.singularity.ee.agent.systemagent.api.TaskExecutionContext;
 import com.singularity.ee.agent.systemagent.api.TaskOutput;
 import com.singularity.ee.agent.systemagent.api.exception.TaskExecutionException;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.joda.time.DateTime;
+
 import java.io.File;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.io.BufferedReader;
@@ -21,7 +25,6 @@ import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.math.BigInteger;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -39,15 +42,29 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
     private String relativePath = null;
     private String timeper_in_sec = null;
     private String execution_freq_in_secs = null;
+    
     float diffInMillis = -1.0F;
+    float diffInSec = diffInMillis / 1000;
+	float diffInMin = diffInSec / 60;
+    
     boolean hasDateStamp = false;
     boolean metricOverlap = false;
     BufferedReader br = null;
     Float DiffInSec = null;
     
-    //caching 
-    Cache<String, BigInteger> previousMetricsMap;
-    Cache<String, String> metricMap;
+//    //caching 
+//    Cache<String, BigInteger> previousMetricsMap;
+//  //  Cache<String, String> metricMap;
+//	private Cache<String, Integer> metricMap;
+	
+	private Cache<String, ArrayList<SQLMetric>> metricMap;
+	private boolean isCached = false;
+
+	public ArbitrarySqlMonitor() 
+	{
+       
+		 metricMap = CacheBuilder.newBuilder().expireAfterWrite(4, TimeUnit.MINUTES).build();
+    }
 
     private String cleanFieldName(String name)
     {
@@ -68,11 +85,8 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
     
     public TaskOutput execute(Map<String, String> taskArguments, TaskExecutionContext taskContext) throws TaskExecutionException 
     {	
-    	//caching
-    	//Cache<String, BigInteger> previousMetricsMap;
-        //Cache<String, String> metricMap;
-    	//previousMetricsMap = CacheBuilder.newBuilder().expireAfterWrite(10, TimeUnit.MINUTES).build();
-    	//metricMap = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS).build();
+    	DateTime currentTime = null;
+    	DateTime timeLastExecuted = null;
     	
     	Long timeper_in_secConv = null;
     	Long execution_freq_in_secsConv = null;
@@ -91,10 +105,13 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
     	logger.info("timePeriod_in_sec: " + timeper_in_sec);
     	logger.info("path: " + relativePath);
     	
-    	DateTime currentTime = new DateTime(new DateTime());
-    	DateTime timeLastExecuted = new DateTime(new DateTime());
+    	if(isCached == false)
+    	{
+    		currentTime = new DateTime(new DateTime());
+    		timeLastExecuted = new DateTime(new DateTime());
+    	}
 		
-        if (taskArguments != null) 
+        if (taskArguments != null)
         {
             try 
             {	 	
@@ -113,8 +130,11 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
     	        { 			 
     	        	while ((sCurrentLine = br.readLine()) != null) 
     	        	{  		
-    	        		dateStampFromFile = sCurrentLine; 					
-    	        		timeLastExecuted = DateTime.parse(dateStampFromFile);
+    	        		if(isCached == false)
+    	        		{ 	        		
+    	        			dateStampFromFile = sCurrentLine; 					
+    	        			timeLastExecuted = DateTime.parse(dateStampFromFile);
+    	        		}
     	        	}   			
     	        } 		
     	    } 
@@ -155,39 +175,49 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
                     return new TaskOutput("Failure");
                 }
                
-                logger.info("instant time (current time): " + currentTime);
-                logger.info("old time (Time last executed query): " + timeLastExecuted);
-                diffInMillis = Math.abs(timeLastExecuted.getMillis() - currentTime.getMillis());
-            	float diffInSec = diffInMillis / 1000;
-                float diffInMin = diffInSec / 60;
-                
+                if(isCached == false)
+                {
+                	logger.info("instant time (current time): " + currentTime);
+                	logger.info("old time (Time last executed query): " + timeLastExecuted);
+                	diffInMillis = Math.abs(timeLastExecuted.getMillis() - currentTime.getMillis());
+                	diffInSec = diffInMillis / 1000;
+                	diffInMin = diffInSec / 60;
+                }
+               
                 if(timeper_in_secConv > diffInSec)
                 {
-                    logger.info("execution frequency > time between query execution; no duplicate data.  Time in Minutes since last execution of queries: " + diffInMin );         	                	
-                    logger.info("execution frequency in seconds: " + timeper_in_secConv);
-                    logger.info("Time in sec: " + diffInSec);                  
-                    timeLastExecuted = new DateTime();              
-                    bw.write(timeLastExecuted.toString());
-                    bw.close();
-                    logger.info("date written to file: " + timeLastExecuted.toString());     	
-                    metricOverlap = false;
-                    status = executeCommands(config, status);                	                	
+	                logger.info("execution frequency > time between query execution; no duplicate data.  Time in Minutes since last execution of queries: " + diffInMin );         	                	
+	                logger.info("execution frequency in seconds: " + timeper_in_secConv);
+	                logger.info("Time in sec: " + diffInSec);  
+	                
+	                if(isCached == false)
+	                {
+		                timeLastExecuted = new DateTime();              
+		                bw.write(timeLastExecuted.toString());
+		                bw.close();
+		                logger.info("date written to file: " + timeLastExecuted.toString());     	
+		                metricOverlap = false;	                
+	                }
+	                status = executeCommands(config, status); 
                 }              
-                else if(timeper_in_secConv <= diffInSec)
-                {
-                    logger.info("execution frequency < diffInSec");    	               	                             
-                    logger.info("Time in sec: " + diffInSec);                                       
-                    timeLastExecuted = new DateTime();
-                    bw.write(timeLastExecuted.toString());
-                    bw.close();
-                	
-                    //store this in instance variable, then pass value into queries
-                    DiffInSec = diffInSec;         	
-                    logger.info("execution frequency < diffInMin; DiffInSec variable value: " + DiffInSec);
-                    metricOverlap = true;
-                    status = executeCommands(config, status);                	
-                }                                              
-            }
+	            else if(timeper_in_secConv <= diffInSec)
+	            {
+	                logger.info("execution frequency < diffInSec");    	               	                             
+	                logger.info("Time in sec: " + diffInSec);     
+	                
+	                if(isCached == false)
+	                {
+		                timeLastExecuted = new DateTime();
+		                bw.write(timeLastExecuted.toString());
+		                bw.close();
+		                	
+		                //store this in instance variable, then pass value into queries
+		                DiffInSec = diffInSec;         	
+		                logger.info("execution frequency < diffInMin; DiffInSec variable value: " + DiffInSec);
+		                metricOverlap = true;
+	                }
+	                status = executeCommands(config, status);                	                }                                              
+            	}
             catch (Exception ioe) 
             {
                 logger.error("Exception", ioe);
@@ -281,7 +311,7 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
     {
         Data retval = new Data();
         Statement stmt = null;
-        ResultSet rs = null;
+        java.sql.ResultSet rs = null;
         String newQuery = null;
         String customMetrics = "Custom Metrics|";
         displayPrefix = customMetrics + displayPrefix;
@@ -290,117 +320,134 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
         {
             logger.info("dateStamp: " + dateStampFromFile);
             long rowcount = 0;
-            stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-            
-            if(query.contains("freqInSec"))
+            stmt = conn.createStatement(java.sql.ResultSet.TYPE_SCROLL_INSENSITIVE, java.sql.ResultSet.CONCUR_READ_ONLY);
+           
+            ArrayList<SQLMetric> metricsList =  metricMap.getIfPresent(query);
+            if(metricsList != null)
             {
-            	logger.info("query contains freqInSec - if loop hit ");
-            	
-            	if(metricOverlap == false)
+            	logger.info("Cache hit for query: " + query);
+            	for (Iterator iterator = metricsList.iterator(); iterator.hasNext();) 
             	{
-            	    newQuery = query.replace("freqInSec", timeper_in_sec);
-                    rs = stmt.executeQuery(newQuery);              	
-                    logger.info("skippedMetricWrite == false... query with timeDate replaced: " + newQuery);
-            	}
-            	else if(metricOverlap == true)
-            	{
-            	    String DiffInSecString = DiffInSec.toString();
-            	    newQuery = query.replace("freqInSec", DiffInSecString);
-                    rs = stmt.executeQuery(newQuery);
-                    logger.info("query with timeDate replaced: " + newQuery);
-            	}           	
+            		SQLMetric sqlMetric = (SQLMetric) iterator.next();
+            		writemetric(sqlMetric.getName(),sqlMetric.getValue());					
+				}
+            	isCached = true;
             }
             else
             {
-            	rs = stmt.executeQuery(query);
-                logger.info("No freqInSec set in monitor.xml...");
-                logger.info("display prefix: " + displayPrefix);
-            }
+            	logger.info("Cache miss for query: "+ query);
+	            if(query.contains("freqInSec"))
+	            {
+	            	logger.info("query contains freqInSec - if loop hit ");
+	            	
+	            	if(metricOverlap == false)
+	            	{
+	            	    newQuery = query.replace("freqInSec", timeper_in_sec);
+	                    rs = stmt.executeQuery(newQuery);              	
+	                    logger.info("skippedMetricWrite == false... query with timeDate replaced: " + newQuery);
+	            	}
+	            	else if(metricOverlap == true)
+	            	{
+	            	    String DiffInSecString = DiffInSec.toString();
+	            	    newQuery = query.replace("freqInSec", DiffInSecString);
+	                    rs = stmt.executeQuery(newQuery);
+	                    logger.info("query with timeDate replaced: " + newQuery);
+	            	}           	
+	            }
+	            else
+	            {
+	            	rs = stmt.executeQuery(query);
+	                logger.info("No freqInSec set in monitor.xml...");
+	                logger.info("display prefix: " + displayPrefix);
+	            }
+	            
+	            //get row and column count of result set
+	            int rowCount = 0;
+	            while (rs.next()) 
+	            {
+	                ++rowCount;              
+	            }
+	            logger.info("row count of resultset: " + rowCount);
+	            
+	            ResultSetMetaData rsmd = rs.getMetaData();
+	            int columnCount = rsmd.getColumnCount();
+	            logger.info("column count: " + columnCount);
+	            
+	            //set cursor to beginning
+	            rs.beforeFirst();
             
-            //get row and column count of result set
-            int rowCount = 0;
-            while (rs.next()) 
-            {
-                ++rowCount;              
-            }
-            logger.info("row count of resultset: " + rowCount);
-            
-            ResultSetMetaData rsmd = rs.getMetaData();
-            int columnCount = rsmd.getColumnCount();
-            logger.info("column count: " + columnCount);
-            
-            //set cursor to beginning
-            rs.beforeFirst();
-            
-            //this deals with the single row/column case
-            if(columnCount == 1 && rowCount == 1)
-            {           	           	
-            	if(rs.next())
-            	{
-            	    String key = cleanFieldName(rs.getString(1));
-            	    logger.info("display prefix: " + displayPrefix);
-            	    logger.info("query result set has single row and column");
-            	    String metricName = cleanFieldName(rs.getMetaData().getColumnName(1));              	              	
-                    String value = rs.getString(1);
-                    ResultSetMetaData metaData = rs.getMetaData();
-                    String name = metaData.getColumnLabel(1);
-                    retval.setName(name);
-                    retval.setValue(value); 
-                    
-                    String nameHolder = retval.getName();
-                    String valHolder = retval.getValue();               
-                    Data data = new Data(nameHolder, valHolder);                   	                
-                    String metricPath = displayPrefix + "|" + key + "|" + metricName;
-                    
-                    if(retval.getValue() != null)
-                    {                    	                   	                       
-                        String aggregationType = MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION;
-                        String timeRollup = MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT;
-                        String clusterRollup = MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE;                 	
-                    	MetricWriter writer = getMetricWriter(metricPath, aggregationType, timeRollup, clusterRollup);                    	
-                    	writer.printMetric(data.getValue());
-                    
-                    	logger.info("metric path: " + metricPath);
-                    	logger.info("metric value: "  + " : " + rs.getString(1));
-                    }                
-            	}
-            }
-            // multi row columns returned, execute else statement below
-            else
-            {           
-          
-		        while(rs.next())
-		        {	        	
-		        	logger.info("while loop hit for multi row column..." + rowcount);
-		            String key = cleanFieldName(rs.getString(1));
-		                	
-		            for (int i = 2; i <= rs.getMetaData().getColumnCount(); i++)
-		            {      	            			            
-		                logger.info("display prefix: " + displayPrefix);
-		                logger.info("query result set has multiple rows and columns");
-		            	String metricName = cleanFieldName(rs.getMetaData().getColumnName(i));	            		
-		            	retval.setName(metricName);
-		            	retval.setValue(rs.getString(i));       
-		            	
-		            	String nameHolder = retval.getName();
+	            //this deals with the single row/column case
+	            if(columnCount == 1 && rowCount == 1)
+	            {           	           	
+	            	if(rs.next())
+	            	{
+	            	    String key = cleanFieldName(rs.getMetaData().getColumnName(1));
+	            	    logger.info("display prefix: " + displayPrefix);
+	            	    logger.info("query result set has single row and column");
+	            	    String metricName = cleanFieldName(rs.getMetaData().getColumnName(1));              	              	
+	                    String value = rs.getString(1);
+	                    ResultSetMetaData metaData = rs.getMetaData();
+	                    String name = metaData.getColumnLabel(1);
+	                    retval.setName(name);
+	                    retval.setValue(value); 
+	                    
+	                    String nameHolder = retval.getName();
 	                    String valHolder = retval.getValue();               
-	                    Data data = new Data(nameHolder, valHolder);                   	                                  
-	                    String metricPath = displayPrefix + "|" + key + "|" + metricName;
-		            		
-		            	if(retval.getValue() != null)
-		                {            				                   	                    
-		                    String aggregationType = MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION;
-	                        String timeRollup = MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT;
-	                        String clusterRollup = MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE;                    	
-	                    	MetricWriter writer = getMetricWriter(metricPath, aggregationType, timeRollup, clusterRollup);                   	
-	                    	writer.printMetric(data.getValue());	                    
-		                    
-		            		logger.info("metric path: " + metricPath); 
-		            		logger.info("metric value: "  + " : " + rs.getString(i));
-		                }  		
-		            }
-		        rowcount += 1;   	
-		        }      	        
+	                    Data data = new Data(nameHolder, valHolder);                   	                
+	                    String metricPath = displayPrefix + "|" + key ;//+ "|" + metricName;
+	                    
+	                    if(retval.getValue() != null)
+	                    {                    	         
+	                    	ArrayList<SQLMetric> al = new ArrayList();
+	                    	al.add(new SQLMetric(metricPath,data.getValue()));
+	                    	metricMap.put(query,al);
+	                    	
+	                        writemetric(metricPath,data.getValue());
+	                    
+	                    	logger.info("metric path: " + metricPath);
+	                    	logger.info("metric value: "  + " : " + rs.getString(1));
+	                    }                
+	            	}
+	            }
+	            // multi row columns returned, execute else statement below
+	            else
+	            {           
+	          
+			        while(rs.next())
+			        {	        	
+			        	logger.info("while loop hit for multi row column..." + rowcount);
+			            String key = cleanFieldName(rs.getString(1));
+			                	
+			            for (int i = 2; i <= rs.getMetaData().getColumnCount(); i++)
+			            {      	            			            
+			                logger.info("display prefix: " + displayPrefix);
+			                logger.info("query result set has multiple rows and columns");
+			            	String metricName = cleanFieldName(rs.getMetaData().getColumnName(i));	            		
+			            	retval.setName(metricName);
+			            	retval.setValue(rs.getString(i));       
+			            	
+			            	String nameHolder = retval.getName();
+		                    String valHolder = retval.getValue();               
+		                    Data data = new Data(nameHolder, valHolder);                   	                                  
+		                    String metricPath = displayPrefix + "|" + key + "|" + metricName;
+			            		
+			            	if(retval.getValue() != null)
+			                {        
+			            		ArrayList<SQLMetric> al = new ArrayList();
+		                    	al.add(new SQLMetric(metricPath,data.getValue()));
+		                    	metricMap.put(query,al);
+		                    	
+			                    writemetric(metricPath,data.getValue());	                    
+			                    
+			            		logger.info("metric path: " + metricPath); 
+			            		logger.info("metric value: "  + " : " + rs.getString(i));
+			                }  				            	
+			            }
+			            rowcount += 1;   	
+			        }  
+			        
+	            }
+	            isCached = false;
             }         
         } 
         catch (SQLException sqle) 
@@ -427,6 +474,15 @@ public class ArbitrarySqlMonitor extends AManagedMonitor
         }
         return retval;
     }
+
+	private void writemetric( String metricPath, String metricValue) 
+	{
+		String aggregationType = MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION;
+		String timeRollup = MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT;
+		String clusterRollup = MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE;                 	
+		MetricWriter writer = getMetricWriter(metricPath, aggregationType, timeRollup, clusterRollup);                    	
+		writer.printMetric(metricValue);
+	}
 
     private Connection connect(Server server) throws SQLException, ClassNotFoundException 
     {
